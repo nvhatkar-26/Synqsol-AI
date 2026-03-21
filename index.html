@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synqsol Personality Insights</title>
+    <style>
+        :root { --primary: #6366F1; --bg: #F8FAFC; --card: #FFFFFF; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .wrapper { width: 100%; max-width: 600px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .card { background: var(--card); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .trait-info { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 10px; }
+        .bar-container { background: #E2E8F0; height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 15px; }
+        .bar-fill { background: var(--primary); height: 100%; border-radius: 5px; transition: width 0.5s ease; }
+        .analysis { font-size: 0.95rem; color: #475569; line-height: 1.6; }
+        .tag { color: var(--primary); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="header">
+            <h2 style="margin:0;">Synqsol Insights</h2>
+            <p style="color: #64748b;">Report for: {{ user_id }}</p>
+        </div>
+
+        {% for item in results %}
+        <div class="card">
+            <div class="tag">OCEAN Trait</div>
+            <div class="trait-info">
+                <span>{{ item.trait }}</span>
+                <span style="color: var(--primary);">{{ item.percentage }}%</span>
+            </div>
+            <div class="bar-container">
+                .bar-fill { background: var(--primary); height: 100%; border-radius: 5px; transition: width 0.5s ease; }
+            </div>
+            <p class="analysis">{{ item.analysis }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
