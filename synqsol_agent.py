@@ -32,62 +32,67 @@ class SynqsolApp:
         self.bank_path = "question_bank.json"
 
     def load_questions(self, test_type):
-        """
-        Selection Logic:
-        -Basic: 2x L1, 1x L2, 1x LR per dimension (20 Q Total)
-        -Full: 1x L1, 3x L2, 3x L3, 3x LR per dimension (50 Q Total)
-        """
         try:
-            with open(self.bank_path, 'r') as f:
+            with open(self.bank_path, 'r', encoding='utf-8') as f:
                 all_q = json.load(f)
-                
+            
             dimensions = ["Openness", "Conscientiousness", "Extraversion", "Agreeableness", "Neuroticism"]
             final_selection = []
-            
+
             for dim in dimensions:
-                dim_pool = [q for q in all_q if q['dimension'] == dim]
+                # Filter pool for the specific dimension
+                dim_pool = [q for q in all_q if q.get('dimension') == dim]
                 
+                if not dim_pool:
+                    st.error(f"No questions found for dimension: {dim}")
+                    continue
+
                 if test_type == "Basic":
-                    # Snqsol Basic Logic: 2 Level 1, 1 Level 2, 1 Level R
-                    l1 = random.sample([q for q in dim_pool if q['level'] == "1"], 2)
-                    l2 = random.sample([q for q in dim_pool if q['level'] == "2"], 1)
-                    lr = random.sample([q for q in dim_pool if q['level'] == "R"], 1)
+                    # Basic 20Q Logic: 2+1+1 = 4 per dim
+                    l1 = random.sample([q for q in dim_pool if str(q.get('level')) == "1"], 2)
+                    l2 = random.sample([q for q in dim_pool if str(q.get('level')) == "2"], 1)
+                    lr = random.sample([q for q in dim_pool if str(q.get('level')) == "R"], 1)
                     final_selection.extend(l1 + l2 + lr)
                 else:
-                    # Snqsol Full Logic: 1 Level 1, 3 Level 2, 3 Level 3, 3 Level R
-                    l1 = random.sample([q for q in dim_pool if q['level'] == "1"], 1)
-                    l2 = random.sample([q for q in dim_pool if q['level'] == "2"], 3)
-                    l3 = random.sample([q for q in dim_pool if q['level'] == "3"], 3)
-                    lr = random.sample([q for q in dim_pool if q['level'] == "R"], 3)
+                    # Advanced 50Q Logic: 1+3+3+3 = 10 per dim
+                    l1 = random.sample([q for q in dim_pool if str(q.get('level')) == "1"], 1)
+                    l2 = random.sample([q for q in dim_pool if str(q.get('level')) == "2"], 3)
+                    l3 = random.sample([q for q in dim_pool if str(q.get('level')) == "3"], 3)
+                    lr = random.sample([q for q in dim_pool if str(q.get('level')) == "R"], 3)
                     final_selection.extend(l1 + l2 + l3 + lr)
-                    
-                random.shuffle(final_selection)  # Shuffle to mix dimensions    
-                return final_selection
+            
+            # --- CRITICAL: SHUFFLE AND RETURN MUST BE OUTSIDE THE FOR LOOP ---
+            random.shuffle(final_selection)
+            return final_selection
+            
+        except ValueError as e:
+            st.error(f"Sample Error: {e}. Check if each level has enough questions in JSON.")
+            return []
         except Exception as e:
-            st.error(f"Error loading questions: {e}. Check if question_bank.json exists.")
+            st.error(f"General Error: {e}")
             return []
         
     def calculate_results(self, responses):
-        """
-        Formula: ((Avg Raw Score -1) / (5-1)) * 100
-        Note: Level R logic is handled by the Mirror-Image UI labels.
-        """
         dims = ["Openness", "Conscientiousness", "Extraversion", "Agreeableness", "Neuroticism"]
-        scores_by_dim = {d:[] for d in dims}
-        
+        scores_by_dim = {d: [] for d in dims}
+
         for r in responses:
-            scores_by_dim[r['dimension']].append(r['score'])
-            
+            if r['dimension'] in scores_by_dim:
+                scores_by_dim[r['dimension']].append(r['score'])
+
         metrics = {}
         for d in dims:
-            avg_raw_score = sum(scores_by_dim[d]) / len(scores_by_dim[d])
-            
-            # Normalisation: (Avg - 1) / 4 * 100
-            normalized = ((avg_raw_score - 1) / 4) * 100
-            metrics[d] = round(normalized, 2)
-            
+            # FIX: Check if the list is empty before dividing
+            if len(scores_by_dim[d]) > 0:
+                avg_raw_score = sum(scores_by_dim[d]) / len(scores_by_dim[d])
+                normalized = ((avg_raw_score - 1) / 4) * 100
+                metrics[d] = round(normalized, 2)
+            else:
+                # Default to 0 if no questions were answered for this trait
+                metrics[d] = 0.0
+        
         overall_pct = round(sum(metrics.values()) / len(metrics), 2)
-        return metrics, overall_pct
+        return overall_pct, metrics
     
     def generate_report(self, name, overall_pct, metrics):
         today_date = datetime.now().strftime("%d %m, %Y")
@@ -129,30 +134,49 @@ if 'final_report' not in st.session_state:
         
 st.title("🧠 Synqsol AI Psychometric Agent")
 
-# Stage 1: Setup
+# --- STAGE 1: Setup ---
 if not st.session_state.test_started:
-    name = st.text_input("Candidate Name")
+    st.markdown("### Welcome to the Synqsol Assessment")
+    st.write("Please enter your name to begin your personality analysis.")
+    
+    name = st.text_input("Candidate Name", placeholder="e.g. Neha")
+    
     col1, col2 = st.columns(2)
     
     with col1:
         if st.button("Start Basic Test (20Q)"):
             if name:
                 st.session_state.name = name
-                st.session_state.questions = agent.load_questions("Basic")
-                st.session_state.test_started = True
-                st.rerun()
+                # Crucial: Load the questions into session state
+                questions = agent.load_questions("Basic")
+                
+                # DEBUG CHECK: Ensure the loop picked up all 5 dimensions
+                if len(questions) < 20:
+                    st.error(f"⚠️ Error: Only {len(questions)} questions loaded. Check your JSON levels.")
+                else:
+                    st.session_state.questions = questions
+                    st.session_state.test_started = True
+                    st.rerun()
             else:
-                st.warning("Enter name first.")
+                st.warning("Please enter a name before starting.")
                 
     with col2:
-        if st.button("Start Full Test (50Q)"):
+        if st.button("Start Pro Test (50Q)"):
             if name:
                 st.session_state.name = name
-                st.session_state.questions = agent.load_questions("Full")
-                st.session_state.test_started = True
-                st.rerun()
+                questions = agent.load_questions("Full")
+                
+                # DEBUG CHECK: Ensure the loop picked up 50 questions
+                if len(questions) < 50:
+                    st.error(f"⚠️ Error: Only {len(questions)} questions loaded. Check your JSON levels.")
+                else:
+                    st.session_state.questions = questions
+                    st.session_state.test_started = True
+                    st.rerun()
             else:
-                st.warning("Enter name first.")
+                st.warning("Please enter a name before starting.")
+
+    st.info("The Basic Test takes ~3 minutes. The Pro Test takes ~12 minutes.")
                 
 # Stage 2: Test Taking
 else:
@@ -190,32 +214,30 @@ else:
                          key = f"q_{current_q_idx}"
         )
         if st.button("Next ->"):
-            st.session_state.response.append({
+            st.session_state.responses.append({
                 "dimension": q['dimension'],
                 "score": score,
                 "level": q['level']
             })
             st.rerun()
             
-    # Stage 3: Final Report
+    # Sage 3: Final Report
     else:
-        st.success("✅ Assessment Completed!!! Generating Report...")
-        
+        # Only calculate if we haven't already generated the report
         if st.session_state.final_report is None:
-            with st.spinner("Synqsol AI is analyzing your profile..."):
+            with st.spinner("AI is analyzing your Synqsol profile..."):
                 overall_pct, metrics = agent.calculate_results(st.session_state.responses)
                 report = agent.generate_report(st.session_state.name, overall_pct, metrics)
                 st.session_state.final_report = report
-                st.session_state.metrics = metrics  # For visualisation
-                
-                st.markdown("---")
-                st.markdown(st.session_state.final_report)
-                
-                # Optional: Display Bar chart of OCEAN dimensions
-                st.bar_chart(st.session_state.metrics)
-                
-                if st.button("New Assessment"):
-                    for key in list(st.session_state.keys()):
-                        del st.session_state[key]
-                    st.rerun()
+                st.session_state.metrics = metrics
+        
+        st.success("✅ Assessment Completed.")
+        st.markdown("---")
+        st.markdown(st.session_state.final_report)
+        st.bar_chart(st.session_state.metrics)
+        
+        # RESET BUTTON
+        if st.button("🔄 Start New Assessment"):
+            st.session_state.clear()
+            st.rerun()
     
