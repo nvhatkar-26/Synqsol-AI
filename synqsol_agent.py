@@ -8,7 +8,7 @@ import os
 # --- INITIAL SETUP ---
 st.set_page_config(page_title="Synqsol AI Agent", page_icon="🧠")
 
-# Load API Key from Streamlit Secrets (for Cloud) or .env (for Local)
+# Load API Key
 load_dotenv()
 api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
 
@@ -18,13 +18,13 @@ class SynqsolAgent:
     def __init__(self, bank_path='question_bank.json'):
         self.bank_path = bank_path
 
-    def load_questions(self, test_type="Basic"):
+    def load_questions(self):
+        """Loads all questions from the JSON bank and shuffles them."""
         try:
             with open(self.bank_path, 'r', encoding='utf-8') as f:
                 all_q = json.load(f)
             
-            # This takes EVERYTHING in your file. 
-            # If you have 20 questions, it loads 20.
+            # Simplified: Just take everything in the file
             final_selection = all_q
             random.shuffle(final_selection)
             return final_selection
@@ -38,11 +38,8 @@ class SynqsolAgent:
         metrics = {}
 
         for d in dims:
-            # Filter scores for the specific dimension
             scores = [r['score'] for r in responses if r['dimension'] == d]
-            
             if len(scores) > 0:
-                # Formula: (Sum of scores / Number of questions / 5) * 100
                 avg = sum(scores) / len(scores)
                 metrics[d] = round((avg / 5) * 100, 2)
             else:
@@ -52,23 +49,19 @@ class SynqsolAgent:
         return overall_pct, metrics
 
     def generate_report(self, name, overall_pct, metrics, responses):
-        """Generates the AI Personality Report using Gemini."""
+        """Generates the AI Personality Report."""
         prompt = f"""
         Analyze the Synqsol Psychometric results for {name}.
-        Overall Personality Index: {overall_pct}%
+        Overall Score: {overall_pct}%
         Trait Scores: {metrics}
 
-        Candidate Question-by-Question Responses:
-        {responses}
+        Candidate Responses: {responses}
 
         INSTRUCTIONS:
-        1. Provide a professional executive summary of the candidate's personality.
-        2. Analyze the TEXT of the questions to identify specific behavioral nuances 
-           (e.g., if they scored high on organization-related questions, highlight their 'Orderliness').
-        3. Create a 3-step 'Synqsol Growth Plan' for {name}.
-        4. Keep the tone professional, insightful, and supportive.
+        1. Provide a professional executive summary.
+        2. Analyze question text for behavioral nuances.
+        3. Create a 3-step 'Synqsol Growth Plan'.
         """
-        
         try:
             response = client.models.generate_content(
                 model="gemini-2.0-flash",
@@ -76,9 +69,9 @@ class SynqsolAgent:
             )
             return response.text
         except Exception as e:
-            return f"Report Generation Error: {e}"
+            return f"Report Error: {e}"
 
-# --- STREAMLIT SESSION STATE ---
+# --- SESSION STATE ---
 if 'test_started' not in st.session_state:
     st.session_state.test_started = False
 if 'current_q' not in st.session_state:
@@ -92,65 +85,66 @@ if 'final_report' not in st.session_state:
 
 agent = SynqsolAgent()
 
-# --- STAGE 1: WELCOME & SETUP ---
+# --- STAGE 1: WELCOME ---
 if not st.session_state.test_started and st.session_state.final_report is None:
-    st.title("🧠 Synqsol AI Personality Agent")
-    st.write("Welcome to the 20-question professional assessment.")
+    st.title("🧠 Synqsol Assessment")
+    name = st.text_input("Candidate Name")
     
-    name = st.text_input("Enter Candidate Name:", placeholder="e.g. Neha Hatkar")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🚀 Start Assessment"):
-            if name:
-                st.session_state.name = name
-                qs = agent.load_questions()
-                if len(qs) >= 20:
-                    st.session_state.questions = qs
-                    st.session_state.test_started = True
-                    st.rerun()
-                else:
-                    st.error("JSON Error: Found fewer than 20 questions.")
+    if st.button("🚀 Start Basic Test"):
+        if name:
+            st.session_state.name = name
+            qs = agent.load_questions()
+            if len(qs) > 0:
+                st.session_state.questions = qs
+                st.session_state.test_started = True
+                st.rerun()
             else:
-                st.warning("Please enter a name first.")
-    with col2:
-        st.button("🔒 Pro Test (50Q) - Locked", disabled=True)
+                st.error("No questions found in question_bank.json.")
+        else:
+            st.warning("Please enter your name.")
 
-# --- STAGE 2: THE TEST LOOP ---
+# --- STAGE 2: TEST LOOP ---
 elif st.session_state.test_started:
     q_idx = st.session_state.current_q
+    total_q = len(st.session_state.questions)
     q = st.session_state.questions[q_idx]
     
-    st.progress((q_idx + 1) / 20)
-    st.subheader(f"Question {q_idx + 1} of 20")
-    st.info(f"Trait focus: {q['dimension']}")
+    st.progress((q_idx + 1) / total_q)
+    st.subheader(f"Question {q_idx + 1} of {total_q}")
     st.write(f"### {q['text']}")
 
-    # Likert Scale Options
     options = ["Strongly Disagree", "Disagree", "Neutral", "Agree", "Strongly Agree"]
-    choice = st.radio("Select your response:", options, index=2, key=f"q_{q_idx}")
+    choice = st.radio("Response:", options, index=2, key=f"q_{q_idx}")
 
-    if st.button("Next ➡️" if q_idx < 19 else "Finish Assessment ✅"):
-        # Map response to score 1-5
+    if st.button("Next" if q_idx < (total_q - 1) else "Finish"):
         score = options.index(choice) + 1
-        
-        # Handle Reverse Scoring (Level R)
+        # Reverse Scoring Logic
         if str(q.get('level')) == "R":
             score = 6 - score
             
-        st.session_state.responses.append({
-            "text": q['text'],
-            "dimension": q['dimension'],
-            "score": score
-        })
+        st.session_state.responses.append({"dimension": q['dimension'], "score": score})
 
-        if q_idx < 19:
+        if q_idx < (total_q - 1):
             st.session_state.current_q += 1
             st.rerun()
         else:
-            # End of test
-            with st.spinner("Analyzing your personality..."):
+            with st.spinner("Analyzing..."):
                 overall_pct, metrics = agent.calculate_results(st.session_state.responses)
                 report = agent.generate_report(st.session_state.name, overall_pct, metrics, st.session_state.responses)
                 st.session_state.final_report = report
                 st.session_state.overall_pct = overall_pct
+                st.session_state.metrics = metrics
+                st.session_state.test_started = False
+                st.rerun()
+
+# --- STAGE 3: REPORT ---
+elif st.session_state.final_report:
+    st.title(f"Report: {st.session_state.name}")
+    st.metric("Overall Score", f"{st.session_state.overall_pct}%")
+    st.json(st.session_state.metrics)
+    st.markdown(st.session_state.final_report)
+    
+    if st.button("🔄 Restart"):
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
