@@ -49,19 +49,9 @@ class SynqsolAgent:
         return overall_pct, metrics
 
     def generate_report(self, name, overall_pct, metrics, responses):
-        """Generates the AI Personality Report."""
-        prompt = f"""
-        Analyze the Synqsol Psychometric results for {name}.
-        Overall Score: {overall_pct}%
-        Trait Scores: {metrics}
-
-        Candidate Responses: {responses}
-
-        INSTRUCTIONS:
-        1. Provide a professional executive summary.
-        2. Analyze question text for behavioral nuances.
-        3. Create a 3-step 'Synqsol Growth Plan'.
-        """
+        """Generates the AI Personality Report with Error Handling."""
+        prompt = f"Analyze the Synqsol results for {name}. Overall: {overall_pct}%, Metrics: {metrics}."
+        
         try:
             response = client.models.generate_content(
                 model="gemini-2.0-flash",
@@ -69,7 +59,10 @@ class SynqsolAgent:
             )
             return response.text
         except Exception as e:
-            return f"Report Error: {e}"
+            # If the API is busy or quota is hit, show a nice message instead of the crash
+            if "429" in str(e):
+                return "🕒 **The AI is currently busy analyzing many reports.** Please wait 60 seconds and click the 'Finish' button again to generate your custom report."
+            return f"Note: We are experiencing a slight delay in AI generation. Error: {e}"
 
 # --- SESSION STATE ---
 if 'test_started' not in st.session_state:
