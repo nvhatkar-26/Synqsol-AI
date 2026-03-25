@@ -8,10 +8,8 @@ import os
 # --- INITIAL SETUP ---
 st.set_page_config(page_title="Synqsol AI Agent", page_icon="🧠")
 
-# Load API Key
 load_dotenv()
 api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
-
 client = genai.Client(api_key=api_key)
 
 class SynqsolAgent:
@@ -19,12 +17,9 @@ class SynqsolAgent:
         self.bank_path = bank_path
 
     def load_questions(self):
-        """Loads all questions from the JSON bank and shuffles them."""
         try:
             with open(self.bank_path, 'r', encoding='utf-8') as f:
                 all_q = json.load(f)
-            
-            # Shuffling the entire bank
             final_selection = all_q
             random.shuffle(final_selection)
             return final_selection
@@ -33,10 +28,8 @@ class SynqsolAgent:
             return []
 
     def calculate_results(self, responses):
-        """Original Formula: (Average Score / 5) * 100"""
         dims = ["Openness", "Conscientiousness", "Extraversion", "Agreeableness", "Neuroticism"]
         metrics = {}
-
         for d in dims:
             scores = [r['score'] for r in responses if r['dimension'] == d]
             if len(scores) > 0:
@@ -44,23 +37,12 @@ class SynqsolAgent:
                 metrics[d] = round((avg / 5) * 100, 2)
             else:
                 metrics[d] = 0.0
-
         overall_pct = round(sum(metrics.values()) / 5, 2)
         return overall_pct, metrics
 
     def generate_report(self, name, overall_pct, metrics, responses):
-        """Generates the AI Personality Report with Error Handling."""
-        prompt = f"""
-        Analyze the Synqsol Psychometric results for {name}.
-        Overall Score: {overall_pct}%
-        Trait Scores: {metrics}
-        Responses: {responses}
-
-        INSTRUCTIONS:
-        1. Provide a professional executive summary.
-        2. Analyze the specific behavior based on the question text.
-        3. Create a 3-step 'Synqsol Growth Plan'.
-        """
+        # Switching to gemini-1.5-flash for better quota stability
+        prompt = f"Analyze results for {name}. Overall: {overall_pct}%. Traits: {metrics}. Responses: {responses}"
         try:
             response = client.models.generate_content(
                 model="gemini-1.5-flash",
@@ -69,7 +51,7 @@ class SynqsolAgent:
             return response.text
         except Exception as e:
             if "429" in str(e):
-                return "🕒 AI_BUSY_ERROR"
+                return "AI_BUSY_ERROR"
             return f"Report Error: {e}"
 
 # --- SESSION STATE ---
@@ -83,17 +65,19 @@ if 'questions' not in st.session_state:
     st.session_state.questions = []
 if 'final_report' not in st.session_state:
     st.session_state.final_report = None
+if 'name' not in st.session_state:
+    st.session_state.name = ""
 
 agent = SynqsolAgent()
 
 # --- STAGE 1: WELCOME ---
 if not st.session_state.test_started and st.session_state.final_report is None:
     st.title("🧠 Synqsol Assessment")
-    name = st.text_input("Candidate Name", placeholder="Enter your name")
+    input_name = st.text_input("Candidate Name", value=st.session_state.name)
     
     if st.button("🚀 Start Basic Test"):
-        if name:
-            st.session_state.name = name
+        if input_name:
+            st.session_state.name = input_name
             qs = agent.load_questions()
             if len(qs) > 0:
                 st.session_state.questions = qs
@@ -132,7 +116,13 @@ elif st.session_state.test_started:
                 overall_pct, metrics = agent.calculate_results(st.session_state.responses)
                 st.session_state.overall_pct = overall_pct
                 st.session_state.metrics = metrics
-                st.session_state.final_report = agent.generate_report(name, overall_pct, metrics, st.session_state.responses)
+                # FIXED: Using st.session_state.name instead of 'name'
+                st.session_state.final_report = agent.generate_report(
+                    st.session_state.name, 
+                    overall_pct, 
+                    metrics, 
+                    st.session_state.responses
+                )
                 st.session_state.test_started = False
                 st.rerun()
 
@@ -141,9 +131,8 @@ elif st.session_state.final_report:
     st.title(f"Report: {st.session_state.name}")
     st.metric("Overall Score", f"{st.session_state.overall_pct}%")
     
-    # Check for Busy AI Error
     if st.session_state.final_report == "AI_BUSY_ERROR":
-        st.warning("🕒 The AI is currently busy analyzing many reports. Please wait 60 seconds.")
+        st.warning("🕒 The AI is currently busy. Please wait 60 seconds.")
         if st.button("🔄 Retry Generating Report"):
             with st.spinner("Retrying..."):
                 st.session_state.final_report = agent.generate_report(
