@@ -24,7 +24,7 @@ class SynqsolAgent:
             with open(self.bank_path, 'r', encoding='utf-8') as f:
                 all_q = json.load(f)
             
-            # Simplified: Just take everything in the file
+            # Shuffling the entire bank
             final_selection = all_q
             random.shuffle(final_selection)
             return final_selection
@@ -50,19 +50,27 @@ class SynqsolAgent:
 
     def generate_report(self, name, overall_pct, metrics, responses):
         """Generates the AI Personality Report with Error Handling."""
-        prompt = f"Analyze the Synqsol results for {name}. Overall: {overall_pct}%, Metrics: {metrics}."
-        
+        prompt = f"""
+        Analyze the Synqsol Psychometric results for {name}.
+        Overall Score: {overall_pct}%
+        Trait Scores: {metrics}
+        Responses: {responses}
+
+        INSTRUCTIONS:
+        1. Provide a professional executive summary.
+        2. Analyze the specific behavior based on the question text.
+        3. Create a 3-step 'Synqsol Growth Plan'.
+        """
         try:
             response = client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-1.5-flash",
                 contents=prompt
             )
             return response.text
         except Exception as e:
-            # If the API is busy or quota is hit, show a nice message instead of the crash
             if "429" in str(e):
-                return "🕒 **The AI is currently busy analyzing many reports.** Please wait 60 seconds and click the 'Finish' button again to generate your custom report."
-            return f"Note: We are experiencing a slight delay in AI generation. Error: {e}"
+                return "🕒 AI_BUSY_ERROR"
+            return f"Report Error: {e}"
 
 # --- SESSION STATE ---
 if 'test_started' not in st.session_state:
@@ -81,7 +89,7 @@ agent = SynqsolAgent()
 # --- STAGE 1: WELCOME ---
 if not st.session_state.test_started and st.session_state.final_report is None:
     st.title("🧠 Synqsol Assessment")
-    name = st.text_input("Candidate Name")
+    name = st.text_input("Candidate Name", placeholder="Enter your name")
     
     if st.button("🚀 Start Basic Test"):
         if name:
@@ -109,24 +117,22 @@ elif st.session_state.test_started:
     options = ["Strongly Disagree", "Disagree", "Neutral", "Agree", "Strongly Agree"]
     choice = st.radio("Response:", options, index=2, key=f"q_{q_idx}")
 
-    if st.button("Next" if q_idx < (total_q - 1) else "Finish"):
+    if st.button("Next ➡️" if q_idx < (total_q - 1) else "Finish ✅"):
         score = options.index(choice) + 1
-        # Reverse Scoring Logic
         if str(q.get('level')) == "R":
             score = 6 - score
             
-        st.session_state.responses.append({"dimension": q['dimension'], "score": score})
+        st.session_state.responses.append({"dimension": q['dimension'], "score": score, "text": q['text']})
 
         if q_idx < (total_q - 1):
             st.session_state.current_q += 1
             st.rerun()
         else:
-            with st.spinner("Analyzing..."):
+            with st.spinner("Analyzing with AI..."):
                 overall_pct, metrics = agent.calculate_results(st.session_state.responses)
-                report = agent.generate_report(st.session_state.name, overall_pct, metrics, st.session_state.responses)
-                st.session_state.final_report = report
                 st.session_state.overall_pct = overall_pct
                 st.session_state.metrics = metrics
+                st.session_state.final_report = agent.generate_report(name, overall_pct, metrics, st.session_state.responses)
                 st.session_state.test_started = False
                 st.rerun()
 
@@ -134,10 +140,25 @@ elif st.session_state.test_started:
 elif st.session_state.final_report:
     st.title(f"Report: {st.session_state.name}")
     st.metric("Overall Score", f"{st.session_state.overall_pct}%")
-    st.json(st.session_state.metrics)
-    st.markdown(st.session_state.final_report)
     
-    if st.button("🔄 Restart"):
+    # Check for Busy AI Error
+    if st.session_state.final_report == "AI_BUSY_ERROR":
+        st.warning("🕒 The AI is currently busy analyzing many reports. Please wait 60 seconds.")
+        if st.button("🔄 Retry Generating Report"):
+            with st.spinner("Retrying..."):
+                st.session_state.final_report = agent.generate_report(
+                    st.session_state.name, 
+                    st.session_state.overall_pct, 
+                    st.session_state.metrics, 
+                    st.session_state.responses
+                )
+                st.rerun()
+    else:
+        st.json(st.session_state.metrics)
+        st.markdown("---")
+        st.markdown(st.session_state.final_report)
+    
+    if st.button("🔄 Restart New Test"):
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
