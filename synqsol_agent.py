@@ -40,36 +40,20 @@ class SynqsolApp:
             final_selection = []
 
             for dim in dimensions:
-                # Filter pool for the specific dimension
                 dim_pool = [q for q in all_q if q.get('dimension') == dim]
                 
-                if not dim_pool:
-                    st.error(f"No questions found for dimension: {dim}")
-                    continue
-
-                if test_type == "Basic":
-                    # Basic 20Q Logic: 2+1+1 = 4 per dim
-                    l1 = random.sample([q for q in dim_pool if str(q.get('level')) == "1"], 2)
-                    l2 = random.sample([q for q in dim_pool if str(q.get('level')) == "2"], 1)
-                    lr = random.sample([q for q in dim_pool if str(q.get('level')) == "R"], 1)
-                    final_selection.extend(l1 + l2 + lr)
-                else:
-                    # Advanced 50Q Logic: 1+3+3+3 = 10 per dim
-                    l1 = random.sample([q for q in dim_pool if str(q.get('level')) == "1"], 1)
-                    l2 = random.sample([q for q in dim_pool if str(q.get('level')) == "2"], 3)
-                    l3 = random.sample([q for q in dim_pool if str(q.get('level')) == "3"], 3)
-                    lr = random.sample([q for q in dim_pool if str(q.get('level')) == "R"], 3)
-                    final_selection.extend(l1 + l2 + l3 + lr)
+                # We are forcing both types to use the 20Q logic for now
+                # 2x L1, 1x L2, 1x LR = 4 questions per trait
+                l1 = random.sample([q for q in dim_pool if str(q.get('level')) == "1"], 2)
+                l2 = random.sample([q for q in dim_pool if str(q.get('level')) == "2"], 1)
+                lr = random.sample([q for q in dim_pool if str(q.get('level')) == "R"], 1)
+                final_selection.extend(l1 + l2 + lr)
             
-            # --- CRITICAL: SHUFFLE AND RETURN MUST BE OUTSIDE THE FOR LOOP ---
             random.shuffle(final_selection)
             return final_selection
             
-        except ValueError as e:
-            st.error(f"Sample Error: {e}. Check if each level has enough questions in JSON.")
-            return []
         except Exception as e:
-            st.error(f"General Error: {e}")
+            st.error(f"Selection Error: {e}")
             return []
         
     def calculate_results(self, responses):
@@ -77,18 +61,19 @@ class SynqsolApp:
         scores_by_dim = {d: [] for d in dims}
 
         for r in responses:
-            if r['dimension'] in scores_by_dim:
-                scores_by_dim[r['dimension']].append(r['score'])
+            dim_name = r.get('dimension')
+            if dim_name in scores_by_dim:
+                scores_by_dim[dim_name].append(r['score'])
 
         metrics = {}
         for d in dims:
-            # FIX: Check if the list is empty before dividing
-            if len(scores_by_dim[d]) > 0:
-                avg_raw_score = sum(scores_by_dim[d]) / len(scores_by_dim[d])
-                normalized = ((avg_raw_score - 1) / 4) * 100
-                metrics[d] = round(normalized, 2)
+            dim_scores = scores_by_dim[d]
+            if len(dim_scores) > 0:
+                # ORIGINAL FORMULA: (Average / 5) * 100
+                avg_score = sum(dim_scores) / len(dim_scores)
+                percentage = (avg_score / 5) * 100
+                metrics[d] = round(percentage, 2)
             else:
-                # Default to 0 if no questions were answered for this trait
                 metrics[d] = 0.0
         
         overall_pct = round(sum(metrics.values()) / len(metrics), 2)
