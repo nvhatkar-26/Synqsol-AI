@@ -45,7 +45,7 @@ class SynqsolAgent:
         prompt = f"Analyze results for {name}. Overall: {overall_pct}%. Traits: {metrics}. Responses: {responses}"
         try:
             response = client.models.generate_content(
-                model="gemini-1.5-flash",
+                model="gemini-1.5-flash-latest",
                 contents=prompt
             )
             return response.text
