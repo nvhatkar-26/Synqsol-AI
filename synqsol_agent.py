@@ -121,8 +121,15 @@ elif st.session_state.final_report:
     circle_cols = st.columns(5)
     for i, (dim, score) in enumerate(st.session_state.metrics.items()):
         with circle_cols[i]:
-            st.markdown(f"""<div style="border: 3px solid #FF4B4B; border-radius: 50%; width: 80px; height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: auto;">
-                <b style="font-size: 22px;">{dim[0]}</b><span style="font-size: 14px;">{score}%</span></div>""", unsafe_content_html=True)
+            # We move the % sign into a variable to avoid the f-string error
+            display_score = f"{score}%"
+            st.markdown(f"""
+                <div style="border: 3px solid #FF4B4B; border-radius: 50%; width: 80px; height: 80px; 
+                display: flex; flex-direction: column; align-items: center; justify-content: center; margin: auto;">
+                    <b style="font-size: 22px;">{dim[0]}</b>
+                    <span style="font-size: 14px;">{display_score}</span>
+                </div>
+            """, unsafe_content_html=True)
             st.caption(f"<center>{dim}</center>", unsafe_content_html=True)
 
     # 2. Review Tab
