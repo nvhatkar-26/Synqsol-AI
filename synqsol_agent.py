@@ -28,27 +28,31 @@ class SynqsolAgent:
             return []
 
     def calculate_results(self, responses):
+        """
+        Calculates Dimension % using Min-Max Normalization on the Average Raw Score.
+        Formula: ((Average - 1) / (5 - 1)) * 100
+        """
         dims = ["Openness", "Conscientiousness", "Extraversion", "Agreeableness", "Neuroticism"]
         metrics = {}
-        
+
         for d in dims:
-            #1. Get all scores for this specific dimension
+            # Step 1: Filter scores for this specific dimension (4 items expected)
             scores = [r['score'] for r in responses if r['dimension'] == d]
             
             if len(scores) > 0:
-                #2. Calculate the Average
-                avg_score = sum(scores) / len(scores)
+                # Step 2: Average the Raw Score (Example: 14 / 4 = 3.5)
+                avg_raw_score = sum(scores) / len(scores)
                 
-                #3. Apply Normalization Formula ((avg - min) / (max - min)) * 100
-                # Since Likert scale is 1-5, min is 1 and max is 5
-                pct = ((avg_score - 1) / (5 - 1)) * 100
-                metrics[d] = round(pct, 2)
+                # Step 3: Normalization & Percentage (Example: ((3.5 - 1) / 4) * 100 = 62.5%)
+                dimension_pct = ((avg_raw_score - 1) / 4) * 100
+                metrics[d] = round(dimension_pct, 2)
             else:
                 metrics[d] = 0.0
-            
-            # Overall score remains the average of the 5 dimensions
-            overall_pct = round(sum(metrics.values()) / 5, 2)
-            return overall_pct, metrics
+
+        # Step 4: Overall Percentage (Average of all dimension percentages)
+        overall_pct = round(sum(metrics.values()) / 5, 2)
+        
+        return overall_pct, metrics
 
     def generate_report(self, name, overall_pct, metrics, responses):
         # Switching to gemini-1.5-flash for better quota stability
