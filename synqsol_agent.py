@@ -30,15 +30,25 @@ class SynqsolAgent:
     def calculate_results(self, responses):
         dims = ["Openness", "Conscientiousness", "Extraversion", "Agreeableness", "Neuroticism"]
         metrics = {}
+        
         for d in dims:
+            #1. Get all scores for this specific dimension
             scores = [r['score'] for r in responses if r['dimension'] == d]
+            
             if len(scores) > 0:
-                avg = sum(scores) / len(scores)
-                metrics[d] = round((avg / 5) * 100, 2)
+                #2. Calculate the Average
+                avg_score = sum(scores) / len(scores)
+                
+                #3. Apply Normalization Formula ((avg - min) / (max - min)) * 100
+                # Since Likert scale is 1-5, min is 1 and max is 5
+                pct = ((avg_score - 1) / (5 - 1)) * 100
+                metrics[d] = round(pct, 2)
             else:
                 metrics[d] = 0.0
-        overall_pct = round(sum(metrics.values()) / 5, 2)
-        return overall_pct, metrics
+            
+            # Overall score remains the average of the 5 dimensions
+            overall_pct = round(sum(metrics.values()) / 5, 2)
+            return overall_pct, metrics
 
     def generate_report(self, name, overall_pct, metrics, responses):
         # Switching to gemini-1.5-flash for better quota stability
