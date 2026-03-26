@@ -112,37 +112,40 @@ elif st.session_state.final_report:
     # 1. Header Information
     st.title("Synqsol Personality Report")
     c1, c2, c3 = st.columns(3)
-    with c1: st.write(f"**Name:** {st.session_state.name}\n**Date:** 26/03/26")
-    with c2: st.write("**Test:** Basic Personality (20Q)")
-    with c3: st.metric("Overall Score", f"{st.session_state.overall_pct}%")
+    with c1: 
+        st.write(f"**Name:** {st.session_state.name}")
+        st.write(f"**Date:** 26/03/26")
+    with c2: 
+        st.write("**Test:** Basic Personality (20Q)")
+    with c3: 
+        # Using a standard metric for the Overall Score
+        st.metric("Overall Score", f"{st.session_state.overall_pct}%")
 
-    # 1a. Dimension Circles
+    # 1a. Bar Chart for Dimension Scores
     st.write("---")
-    circle_cols = st.columns(5)
-    for i, (dim, score) in enumerate(st.session_state.metrics.items()):
-        with circle_cols[i]:
-            # We move the % sign into a variable to avoid the f-string error
-            display_score = f"{score}%"
-            st.markdown(f"""
-                <div style="border: 3px solid #FF4B4B; border-radius: 50%; width: 80px; height: 80px; 
-                display: flex; flex-direction: column; align-items: center; justify-content: center; margin: auto;">
-                    <b style="font-size: 22px;">{dim[0]}</b>
-                    <span style="font-size: 14px;">{display_score}</span>
-                </div>
-            """, unsafe_content_html=True)
-            st.caption(f"<center>{dim}</center>", unsafe_content_html=True)
+    st.subheader("📊 Dimension Scores (%)")
+    # We create a bar chart from the metrics dictionary
+    st.bar_chart(st.session_state.metrics)
 
-    # 2. Review Tab
+    # 2. Review Tab (Dropdowns)
     st.write("---")
     st.subheader("📑 Review Tab")
-    defs = {"Openness": "Curiosity & Creativity", "Conscientiousness": "Discipline & Order", "Extraversion": "Social Energy", "Agreeableness": "Cooperation", "Neuroticism": "Stress Response"}
+    defs = {
+        "Openness": "Curiosity & Creativity", 
+        "Conscientiousness": "Discipline & Order", 
+        "Extraversion": "Social Energy", 
+        "Agreeableness": "Cooperation", 
+        "Neuroticism": "Stress Response"
+    }
     for d, df in defs.items():
-        with st.expander(f"Review: {d}"): st.write(f"**Definition:** {df}")
+        with st.expander(f"Review: {d}"): 
+            st.write(f"**Definition:** {df}")
 
-    # 3, 4, 5. AI Generated Content
+    # 3, 4, 5. AI Generated Content (Summary, Analysis, Strengths)
     st.write("---")
     st.markdown(st.session_state.final_report)
 
     if st.button("🔄 Restart New Test"):
-        for key in list(st.session_state.keys()): del st.session_state[key]
+        for key in list(st.session_state.keys()): 
+            del st.session_state[key]
         st.rerun()
