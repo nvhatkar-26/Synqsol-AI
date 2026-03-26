@@ -47,20 +47,23 @@ class SynqsolAgent:
         Overall Score: {overall_pct}%
         Dimension Scores: {metrics}
 
-        STRICT STRUCTURE:
-        1. [SUMMARY]: A 4-line overview of the overall personality.
-        2. [DIMENSION ANALYSIS]: Explain exactly what each percentage means for the user.
-        3. [KEY STRENGTHS]: List 3 bullet points.
-        4. [DEVELOPMENT OPPORTUNITIES]: List 2 specific areas for improvement.
+        STRICT FORMATTING RULES:
+        - Do NOT use square brackets like [SUMMARY]. Use '##' headings.
+        - The 'Dimension Analysis' section must be a descriptive paragraph for each trait.
+        
+        REPORT STRUCTURE:
+        ## Executive Summary
+        A 4-line overview of the overall personality profile.
+
+        ## Detailed Dimension Analysis
+        For each of the five traits, provide a 2-3 sentence descriptive analysis of what {name}'s specific percentage means for their professional behavior.
+
+        ## Key Strengths
+        List 3 detailed bullet points.
+
+        ## Development Opportunities
+        List 2 specific, actionable areas for improvement.
         """
-        try:
-            response = client.models.generate_content(
-                model="models/gemini-3.1-flash-lite-preview",
-                contents=prompt
-            )
-            return response.text
-        except Exception as e:
-            return "AI_BUSY_ERROR" if "429" in str(e) else f"Report Error: {e}"
 
 # --- SESSION STATE ---
 for key in ['test_started', 'current_q', 'responses', 'questions', 'final_report', 'name']:
@@ -109,8 +112,9 @@ elif st.session_state.test_started:
 
 # --- STAGE 3: STRUCTURED REPORT ---
 elif st.session_state.final_report:
-    # 1. Header Information
     st.title("Synqsol Personality Report")
+    
+    # 1. Header Information
     c1, c2, c3 = st.columns(3)
     with c1: 
         st.write(f"**Name:** {st.session_state.name}")
@@ -118,34 +122,33 @@ elif st.session_state.final_report:
     with c2: 
         st.write("**Test:** Basic Personality (20Q)")
     with c3: 
-        # Using a standard metric for the Overall Score
         st.metric("Overall Score", f"{st.session_state.overall_pct}%")
 
-    # 1a. Bar Chart for Dimension Scores
-    st.write("---")
-    st.subheader("📊 Dimension Scores (%)")
-    # We create a bar chart from the metrics dictionary
-    st.bar_chart(st.session_state.metrics)
+    # 1a. Bar Chart as a Dropdown
+    with st.expander("📊 View Score Visualization (Bar Chart)"):
+        st.bar_chart(st.session_state.metrics)
 
-    # 2. Review Tab (Dropdowns)
+    # 2. Review Tab (Detailed Definitions)
     st.write("---")
-    st.subheader("📑 Review Tab")
+    st.subheader("📑 Dimension Review")
     defs = {
-        "Openness": "Curiosity & Creativity", 
-        "Conscientiousness": "Discipline & Order", 
-        "Extraversion": "Social Energy", 
-        "Agreeableness": "Cooperation", 
-        "Neuroticism": "Stress Response"
+        "Openness": "Openness describes a person's tendency to be intellectually curious, creative, and willing to try new experiences rather than sticking to strict routines.",
+        "Conscientiousness": "Conscientiousness measures how organized, dependable, and disciplined a person is in managing their tasks and professional responsibilities.",
+        "Extraversion": "Extraversion indicates how much energy an individual draws from social interactions, reflecting their level of assertiveness and sociability.",
+        "Agreeableness": "Agreeableness assesses a person's tendency to be compassionate, cooperative, and helpful toward others rather than suspicious or antagonistic.",
+        "Neuroticism": "Neuroticism (or Emotional Stability) reflects how a person responds to stress and their likelihood of experiencing emotional fluctuations under pressure."
     }
     for d, df in defs.items():
-        with st.expander(f"Review: {d}"): 
-            st.write(f"**Definition:** {df}")
+        with st.expander(f"Definition: {d}"):
+            st.write(df)
 
-    # 3, 4, 5. AI Generated Content (Summary, Analysis, Strengths)
+    # 3, 4, 5. AI Content
     st.write("---")
-    st.markdown(st.session_state.final_report)
+    # Cleaning up any stray brackets if the AI generates them by mistake
+    clean_report = st.session_state.final_report.replace("[", "").replace("]", "")
+    st.markdown(clean_report)
 
     if st.button("🔄 Restart New Test"):
-        for key in list(st.session_state.keys()): 
+        for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
