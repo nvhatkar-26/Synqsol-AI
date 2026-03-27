@@ -102,25 +102,41 @@ def reset_state():
 if 'test_started' not in st.session_state: reset_state()
 agent = SynqsolAgent()
 
-# STAGE 1: SELECTION
+# --- STAGE 1: SELECTION ---
 if not st.session_state.test_started and st.session_state.final_report is None:
     st.title("🧠 Synqsol Assessment Portal")
     name = st.text_input("Candidate Name", value=st.session_state.name)
+    
     col1, col2 = st.columns(2)
     with col1:
         if st.button("📊 Start Basic Test (20Q)"):
             if name:
-                st.session_state.name, st.session_state.test_type = name, "Basic"
-                st.session_state.questions = agent.load_questions("Basic")
-                st.session_state.test_started = True
-                st.rerun()
+                # 1. Load questions first
+                questions = agent.load_questions("Basic")
+                if questions:
+                    # 2. Update state in the correct order
+                    st.session_state.questions = questions
+                    st.session_state.name = name
+                    st.session_state.test_type = "Basic"
+                    st.session_state.current_q = 0  # CRITICAL: Reset to 0
+                    st.session_state.responses = [] # CRITICAL: Clear old data
+                    st.session_state.test_started = True
+                    st.rerun()
+            else: st.warning("Enter name first")
+
     with col2:
         if st.button("🚀 Start Advanced Test (45Q)"):
             if name:
-                st.session_state.name, st.session_state.test_type = name, "Advanced"
-                st.session_state.questions = agent.load_questions("Advanced")
-                st.session_state.test_started = True
-                st.rerun()
+                questions = agent.load_questions("Advanced")
+                if questions:
+                    st.session_state.questions = questions
+                    st.session_state.name = name
+                    st.session_state.test_type = "Advanced"
+                    st.session_state.current_q = 0  # CRITICAL: Reset to 0
+                    st.session_state.responses = [] # CRITICAL: Clear old data
+                    st.session_state.test_started = True
+                    st.rerun()
+            else: st.warning("Enter name first")
 
 # STAGE 2: TEST LOOP
 elif st.session_state.test_started:
