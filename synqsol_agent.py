@@ -16,16 +16,25 @@ class SynqsolAgent:
     def load_questions(self, test_type):
         filename = 'basic_question_bank.json' if test_type == "Basic" else 'advanced_question_bank.json'
         try:
+            if not os.path.exists(filename):
+                st.error(f"File not found: {filename}")
+                return []
             with open(filename, 'r', encoding='utf-8') as f:
-                all_q = json.load(f)
+                content = f.read().strip()
+                if not content:
+                    st.error(f"The file {filename} is empty.")
+                    return []
+                all_q = json.loads(content)
             random.shuffle(all_q)
             return all_q
+        except json.JSONDecodeError:
+            st.error(f"Format Error: {filename} contains invalid JSON. Check for stray characters.")
+            return []
         except Exception as e:
             st.error(f"Error loading {filename}: {e}")
             return []
 
     def calculate_basic(self, responses):
-        """Basic Formula: ((Average Score - 1) / 4) * 100"""
         dims = ["Openness", "Conscientiousness", "Extraversion", "Agreeableness", "Neuroticism"]
         metrics = {}
         for d in dims:
@@ -39,12 +48,6 @@ class SynqsolAgent:
         return overall, metrics
 
     def calculate_advanced(self, responses):
-        """
-        Advanced Formula Logic:
-        1. Weighted Score = Score * Loading Factor
-        2. Sub-dim Score = Sum(Weighted) / Sum(Loadings)
-        3. Percentage = ((Sub-dim Score - 1) / 4) * 100
-        """
         structure = {}
         for r in responses:
             dim = r['dimension']
@@ -57,7 +60,7 @@ class SynqsolAgent:
         for dim, subs in structure.items():
             sub_percentages = []
             for sub_name, items in subs.items():
-                # --- FIXED CALCULATION LINE ---
+                # Corrected syntax for Summation logic
                 sum_weighted_scores = sum(item['score'] * item['loading_factor'] for item in items)
                 sum_loadings = sum(item['loading_factor'] for item in items)
                 
@@ -77,9 +80,9 @@ class SynqsolAgent:
     def generate_report(self, name, test_type, overall, metrics):
         prompt = f"""
         Generate a professional Synqsol {test_type} Personality Report for {name}.
-        Overall Score: {overall}%
-        Dimension Scores: {metrics}
-        STRICT FORMATTING: No square brackets. Use '##' for headings.
+        Overall Score: {overall}% | Metrics: {metrics}
+        STRICT FORMATTING: No square brackets. Use '##' for headings. 
+        Include: Executive Summary, Detailed Dimension Analysis, Key Strengths, and Development Opportunities.
         """
         try:
             response = client.models.generate_content(
@@ -90,98 +93,109 @@ class SynqsolAgent:
         except:
             return "AI_BUSY_ERROR"
 
-# --- STREAMLIT UI LOGIC ---
+# --- STATE MANAGEMENT ---
 def reset_state():
-    for key in list(st.session_state.keys()): del st.session_state[key]
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
     st.session_state.test_started = False
     st.session_state.current_q = 0
     st.session_state.responses = []
     st.session_state.final_report = None
     st.session_state.name = ""
+    st.session_state.test_type = None
 
-if 'test_started' not in st.session_state: reset_state()
+if 'test_started' not in st.session_state:
+    reset_state()
+
 agent = SynqsolAgent()
 
 # --- STAGE 1: SELECTION ---
 if not st.session_state.test_started and st.session_state.final_report is None:
     st.title("🧠 Synqsol Assessment Portal")
-    name = st.text_input("Candidate Name", value=st.session_state.name)
+    name_input = st.text_input("Candidate Name", value=st.session_state.name)
     
     col1, col2 = st.columns(2)
     with col1:
         if st.button("📊 Start Basic Test (20Q)"):
-            if name:
-                # 1. Load questions first
-                questions = agent.load_questions("Basic")
-                if questions:
-                    # 2. Update state in the correct order
-                    st.session_state.questions = questions
-                    st.session_state.name = name
-                    st.session_state.test_type = "Basic"
-                    st.session_state.current_q = 0  # CRITICAL: Reset to 0
-                    st.session_state.responses = [] # CRITICAL: Clear old data
-                    st.session_state.test_started = True
+            if name_input:
+                qs = agent.load_questions("Basic")
+                if qs:
+                    st.session_state.name, st.session_state.test_type = name_input, "Basic"
+                    st.session_state.questions, st.session_state.current_q = qs, 0
+                    st.session_state.responses, st.session_state.test_started = [], True
                     st.rerun()
-            else: st.warning("Enter name first")
+            else: st.warning("Please enter your name.")
 
     with col2:
         if st.button("🚀 Start Advanced Test (45Q)"):
-            if name:
-                questions = agent.load_questions("Advanced")
-                if questions:
-                    st.session_state.questions = questions
-                    st.session_state.name = name
-                    st.session_state.test_type = "Advanced"
-                    st.session_state.current_q = 0  # CRITICAL: Reset to 0
-                    st.session_state.responses = [] # CRITICAL: Clear old data
-                    st.session_state.test_started = True
+            if name_input:
+                qs = agent.load_questions("Advanced")
+                if qs:
+                    st.session_state.name, st.session_state.test_type = name_input, "Advanced"
+                    st.session_state.questions, st.session_state.current_q = qs, 0
+                    st.session_state.responses, st.session_state.test_started = [], True
                     st.rerun()
-            else: st.warning("Enter name first")
+            else: st.warning("Please enter your name.")
 
-# STAGE 2: TEST LOOP
+# --- STAGE 2: TEST LOOP ---
 elif st.session_state.test_started:
-    idx = st.session_state.current_q
     qs = st.session_state.questions
+    idx = st.session_state.current_q
+    
+    # SAFETY: Prevent IndexError if state is inconsistent
+    if idx >= len(qs):
+        st.session_state.current_q = 0
+        st.rerun()
+
     q = qs[idx]
     st.progress((idx + 1) / len(qs))
-    st.subheader(f"{st.session_state.test_type}: Question {idx + 1} of {len(qs)}")
+    st.subheader(f"{st.session_state.test_type} Test: Q{idx + 1} of {len(qs)}")
     st.write(f"### {q['text']}")
+    
     opts = ["Strongly Disagree", "Disagree", "Neutral", "Agree", "Strongly Agree"]
-    ans = st.radio("Response:", opts, index=2, key=f"q_{idx}")
+    ans = st.radio("Your response:", opts, index=2, key=f"q_{idx}")
     
     if st.button("Next ➡️" if idx < len(qs)-1 else "Finish ✅"):
         score = opts.index(ans) + 1
         if str(q.get('level')).upper() == "R": score = 6 - score
+        
         st.session_state.responses.append({
             "dimension": q['dimension'],
             "sub_dimension": q.get('sub_dimension', 'General'),
             "score": score,
-            "loading_factor": q.get('loading_factor', 1.0)
+            "loading_factor": float(q.get('loading_factor', 1.0))
         })
+        
         if idx < len(qs)-1:
             st.session_state.current_q += 1
             st.rerun()
         else:
-            with st.spinner("Calculating..."):
+            with st.spinner("Analyzing Results..."):
                 if st.session_state.test_type == "Basic":
                     o, m = agent.calculate_basic(st.session_state.responses)
                 else:
                     o, m = agent.calculate_advanced(st.session_state.responses)
+                
                 st.session_state.overall_pct, st.session_state.metrics = o, m
                 st.session_state.final_report = agent.generate_report(st.session_state.name, st.session_state.test_type, o, m)
                 st.session_state.test_started = False
                 st.rerun()
 
-# STAGE 3: REPORT
+# --- STAGE 3: REPORT ---
 elif st.session_state.final_report:
     st.title(f"Synqsol {st.session_state.test_type} Report")
     c1, c2, c3 = st.columns(3)
-    with c1: st.write(f"**Name:** {st.session_state.name}\n**Date:** 26/03/26")
+    with c1: st.write(f"**Candidate:** {st.session_state.name}\n**Date:** 27/03/26")
     with c3: st.metric("Overall Score", f"{st.session_state.overall_pct}%")
-    with st.expander("📊 View Visualization"):
+
+    with st.expander("📊 View Score Visualization"):
         st.bar_chart(st.session_state.metrics)
+
     st.write("---")
-    st.markdown(st.session_state.final_report.replace("[", "").replace("]", ""))
+    # Removal of square brackets and clean rendering
+    report_text = st.session_state.final_report.replace("[", "").replace("]", "")
+    st.markdown(report_text)
+
     if st.button("🔄 Start New Assessment"):
         reset_state()
         st.rerun()
