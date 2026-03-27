@@ -1,0 +1,362 @@
+[
+  {
+    "id": 1,
+    "text": "I often spend time daydreaming about vivid and complex scenarios.",
+    "dimension": "Openness",
+    "sub_dimension": "Active Imagination",
+    "level": "2",
+    "loading_factor": 0.88
+  },
+  {
+    "id": 2,
+    "text": "I enjoy creating elaborate stories in my mind during my free time.",
+    "dimension": "Openness",
+    "sub_dimension": "Active Imagination",
+    "level": "2",
+    "loading_factor": 0.74
+  },
+  {
+    "id": 3,
+    "text": "I prefer to stick to factual reality rather than wandering into my imagination.",
+    "dimension": "Openness",
+    "sub_dimension": "Active Imagination",
+    "level": "R",
+    "loading_factor": 0.65
+  },
+  {
+    "id": 4,
+    "text": "I am always looking for new and daring activities to try.",
+    "dimension": "Openness",
+    "sub_dimension": "Adventurousness",
+    "level": "2",
+    "loading_factor": 0.92
+  },
+  {
+    "id": 5,
+    "text": "I feel refreshed when I break my routine to do something completely new.",
+    "dimension": "Openness",
+    "sub_dimension": "Adventurousness",
+    "level": "2",
+    "loading_factor": 0.81
+  },
+  {
+    "id": 6,
+    "text": "I feel uncomfortable when I have to deviate from my familiar surroundings.",
+    "dimension": "Openness",
+    "sub_dimension": "Adventurousness",
+    "level": "R",
+    "loading_factor": 0.58
+  },
+  {
+    "id": 7,
+    "text": "I spend a lot of time analyzing my own thoughts and feelings.",
+    "dimension": "Openness",
+    "sub_dimension": "Reflectiveness",
+    "level": "2",
+    "loading_factor": 0.79
+  },
+  {
+    "id": 8,
+    "text": "I enjoy exploring deep philosophical questions about life.",
+    "dimension": "Openness",
+    "sub_dimension": "Reflectiveness",
+    "level": "2",
+    "loading_factor": 0.85
+  },
+  {
+    "id": 9,
+    "text": "I rarely bother to think about the deeper meaning behind my actions.",
+    "dimension": "Openness",
+    "sub_dimension": "Reflectiveness",
+    "level": "R",
+    "loading_factor": 0.49
+  },
+  {
+    "id": 10,
+    "text": "I am excellent at resisting temptations that might distract me from my goals.",
+    "dimension": "Conscientiousness",
+    "sub_dimension": "Self Control",
+    "level": "2",
+    "loading_factor": 0.94
+  },
+  {
+    "id": 11,
+    "text": "I can stay focused on a task even when it becomes tedious.",
+    "dimension": "Conscientiousness",
+    "sub_dimension": "Self Control",
+    "level": "2",
+    "loading_factor": 0.82
+  },
+  {
+    "id": 12,
+    "text": "I often act on my immediate urges without thinking of the consequences.",
+    "dimension": "Conscientiousness",
+    "sub_dimension": "Self Control",
+    "level": "R",
+    "loading_factor": 0.71
+  },
+  {
+    "id": 13,
+    "text": "I believe that following established rules is essential for a functional society.",
+    "dimension": "Conscientiousness",
+    "sub_dimension": "Traditionalism",
+    "level": "2",
+    "loading_factor": 0.66
+  },
+  {
+    "id": 14,
+    "text": "I have a high respect for the traditional ways of doing things in my field.",
+    "dimension": "Conscientiousness",
+    "sub_dimension": "Traditionalism",
+    "level": "2",
+    "loading_factor": 0.75
+  },
+  {
+    "id": 15,
+    "text": "I think that traditions are often just obstacles to progress.",
+    "dimension": "Conscientiousness",
+    "sub_dimension": "Traditionalism",
+    "level": "R",
+    "loading_factor": 0.60
+  },
+  {
+    "id": 16,
+    "text": "Others can always count on me to fulfill my promises.",
+    "dimension": "Conscientiousness",
+    "sub_dimension": "Responsibility",
+    "level": "2",
+    "loading_factor": 0.89
+  },
+  {
+    "id": 17,
+    "text": "I take my professional obligations very seriously.",
+    "dimension": "Conscientiousness",
+    "sub_dimension": "Responsibility",
+    "level": "2",
+    "loading_factor": 0.91
+  },
+  {
+    "id": 18,
+    "text": "I sometimes neglect my duties if I find them too demanding.",
+    "dimension": "Conscientiousness",
+    "sub_dimension": "Responsibility",
+    "level": "R",
+    "loading_factor": 0.55
+  },
+  {
+    "id": 19,
+    "text": "I truly enjoy being in the middle of a large, lively crowd.",
+    "dimension": "Extraversion",
+    "sub_dimension": "Gregariousness",
+    "level": "2",
+    "loading_factor": 0.83
+  },
+  {
+    "id": 20,
+    "text": "I make an effort to talk to as many people as possible at social events.",
+    "dimension": "Extraversion",
+    "sub_dimension": "Gregariousness",
+    "level": "2",
+    "loading_factor": 0.77
+  },
+  {
+    "id": 21,
+    "text": "I find constant social interaction to be quite draining.",
+    "dimension": "Extraversion",
+    "sub_dimension": "Gregariousness",
+    "level": "R",
+    "loading_factor": 0.68
+  },
+  {
+    "id": 22,
+    "text": "I seek out high-energy environments that provide a lot of stimulation.",
+    "dimension": "Extraversion",
+    "sub_dimension": "Excitement Seeking",
+    "level": "2",
+    "loading_factor": 0.86
+  },
+  {
+    "id": 23,
+    "text": "I love the thrill of fast-paced and loud situations.",
+    "dimension": "Extraversion",
+    "sub_dimension": "Excitement Seeking",
+    "level": "2",
+    "loading_factor": 0.80
+  },
+  {
+    "id": 24,
+    "text": "I prefer quiet and calm environments over loud and busy ones.",
+    "dimension": "Extraversion",
+    "sub_dimension": "Excitement Seeking",
+    "level": "R",
+    "loading_factor": 0.44
+  },
+  {
+    "id": 25,
+    "text": "I am quick to show affection and kindness to the people I meet.",
+    "dimension": "Extraversion",
+    "sub_dimension": "Warmth",
+    "level": "2",
+    "loading_factor": 0.73
+  },
+  {
+    "id": 26,
+    "text": "I find it easy to form friendly and personal bonds with colleagues.",
+    "dimension": "Extraversion",
+    "sub_dimension": "Warmth",
+    "level": "2",
+    "loading_factor": 0.78
+  },
+  {
+    "id": 27,
+    "text": "I tend to keep my interpersonal relationships strictly formal.",
+    "dimension": "Extraversion",
+    "sub_dimension": "Warmth",
+    "level": "R",
+    "loading_factor": 0.51
+  },
+  {
+    "id": 28,
+    "text": "I generally assume that most people have good intentions.",
+    "dimension": "Agreeableness",
+    "sub_dimension": "Trust",
+    "level": "2",
+    "loading_factor": 0.87
+  },
+  {
+    "id": 29,
+    "text": "I find it easy to trust that others will do what they say.",
+    "dimension": "Agreeableness",
+    "sub_dimension": "Trust",
+    "level": "2",
+    "loading_factor": 0.82
+  },
+  {
+    "id": 30,
+    "text": "I am often wary of people's hidden motives.",
+    "dimension": "Agreeableness",
+    "sub_dimension": "Trust",
+    "level": "R",
+    "loading_factor": 0.63
+  },
+  {
+    "id": 31,
+    "text": "I genuinely find joy in helping others succeed.",
+    "dimension": "Agreeableness",
+    "sub_dimension": "Altruism",
+    "level": "2",
+    "loading_factor": 0.90
+  },
+  {
+    "id": 32,
+    "text": "I would go out of my way to support a teammate in need.",
+    "dimension": "Agreeableness",
+    "sub_dimension": "Altruism",
+    "level": "2",
+    "loading_factor": 0.88
+  },
+  {
+    "id": 33,
+    "text": "I believe people should look out for themselves first.",
+    "dimension": "Agreeableness",
+    "sub_dimension": "Altruism",
+    "level": "R",
+    "loading_factor": 0.48
+  },
+  {
+    "id": 34,
+    "text": "I prefer working in harmony with others to reach a common goal.",
+    "dimension": "Agreeableness",
+    "sub_dimension": "Cooperation",
+    "level": "2",
+    "loading_factor": 0.84
+  },
+  {
+    "id": 35,
+    "text": "I am willing to compromise my own needs for the sake of the team.",
+    "dimension": "Agreeableness",
+    "sub_dimension": "Cooperation",
+    "level": "2",
+    "loading_factor": 0.76
+  },
+  {
+    "id": 36,
+    "text": "I find that competitive environments are more productive than cooperative ones.",
+    "dimension": "Agreeableness",
+    "sub_dimension": "Cooperation",
+    "level": "R",
+    "loading_factor": 0.52
+  },
+  {
+    "id": 37,
+    "text": "I frequently experience shifts in my mood throughout the day.",
+    "dimension": "Neuroticism",
+    "sub_dimension": "Emotional Instability",
+    "level": "2",
+    "loading_factor": 0.85
+  },
+  {
+    "id": 38,
+    "text": "I often find it difficult to keep my emotions steady under pressure.",
+    "dimension": "Neuroticism",
+    "sub_dimension": "Emotional Instability",
+    "level": "2",
+    "loading_factor": 0.81
+  },
+  {
+    "id": 39,
+    "text": "I am generally a very emotionally stable and consistent person.",
+    "dimension": "Neuroticism",
+    "sub_dimension": "Emotional Instability",
+    "level": "R",
+    "loading_factor": 0.70
+  },
+  {
+    "id": 40,
+    "text": "I spend a lot of time worrying about things that might go wrong.",
+    "dimension": "Neuroticism",
+    "sub_dimension": "Anxiety",
+    "level": "2",
+    "loading_factor": 0.93
+  },
+  {
+    "id": 41,
+    "text": "I feel nervous even when there is no immediate threat.",
+    "dimension": "Neuroticism",
+    "sub_dimension": "Anxiety",
+    "level": "2",
+    "loading_factor": 0.88
+  },
+  {
+    "id": 42,
+    "text": "I am a very relaxed person who rarely feels stressed.",
+    "dimension": "Neuroticism",
+    "sub_dimension": "Anxiety",
+    "level": "R",
+    "loading_factor": 0.59
+  },
+  {
+    "id": 43,
+    "text": "I often buy things or make decisions on the spur of the moment.",
+    "dimension": "Neuroticism",
+    "sub_dimension": "Impulsivity",
+    "level": "2",
+    "loading_factor": 0.78
+  },
+  {
+    "id": 44,
+    "text": "I find it hard to resist immediate gratification.",
+    "dimension": "Neuroticism",
+    "sub_dimension": "Impulsivity",
+    "level": "2",
+    "loading_factor": 0.74
+  },
+  {
+    "id": 45,
+    "text": "I always carefully weigh all options before taking any action.",
+    "dimension": "Neuroticism",
+    "sub_dimension": "Impulsivity",
+    "level": "R",
+    "loading_factor": 0.42
+  }
+]
