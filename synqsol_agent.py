@@ -15,6 +15,11 @@ client = genai.Client(api_key=api_key)
 class SynqsolAgent:
     def load_questions(self, test_type):
         filename = 'basic_question_bank.json' if test_type == "Basic" else 'advanced_question_bank.json'
+        
+        # --- DEBUGGING PLAN: STEP 1 ---
+        st.info(f"Checking for: {filename}")
+        st.write(f"Absolute Path: {os.path.abspath(filename)}")
+        st.write(f"Does file exist? {os.path.exists(filename)}")
         try:
             if not os.path.exists(filename):
                 st.error(f"File not found: {filename}")
