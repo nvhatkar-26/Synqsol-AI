@@ -13,56 +13,73 @@ api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
 class SynqsolAgent:
-    def __init__(self, bank_path='question_bank.json'):
-        self.bank_path = bank_path
-
-    def load_questions(self):
+    def load_questions(self, test_type):
+        filename = 'basic_question_bank.json' if test_type == "Basic" else 'advanced_question_bank.json'
         try:
-            with open(self.bank_path, 'r', encoding='utf-8') as f:
+            with open(filename, 'r', encoding='utf-8') as f:
                 all_q = json.load(f)
-            # Ensure we always have exactly 20 questions for the Basic Test
             random.shuffle(all_q)
-            return all_q[:20] 
+            return all_q
         except Exception as e:
-            st.error(f"Error loading JSON: {e}")
+            st.error(f"Error loading {filename}: {e}")
             return []
 
-    def calculate_results(self, responses):
+    def calculate_basic(self, responses):
+        """Basic Formula: ((Average Score - 1) / 4) * 100"""
         dims = ["Openness", "Conscientiousness", "Extraversion", "Agreeableness", "Neuroticism"]
         metrics = {}
         for d in dims:
             scores = [r['score'] for r in responses if r['dimension'] == d]
-            if len(scores) > 0:
-                avg_raw_score = sum(scores) / len(scores)
-                dimension_pct = ((avg_raw_score - 1) / 4) * 100
-                metrics[d] = round(dimension_pct, 2)
+            if scores:
+                avg_raw = sum(scores) / len(scores)
+                metrics[d] = round(((avg_raw - 1) / 4) * 100, 2)
             else:
                 metrics[d] = 0.0
-        overall_pct = round(sum(metrics.values()) / 5, 2)
-        return overall_pct, metrics
+        overall = round(sum(metrics.values()) / 5, 2)
+        return overall, metrics
 
-    def generate_report(self, name, overall_pct, metrics):
+    def calculate_advanced(self, responses):
+        """
+        Advanced Formula Logic:
+        1. Weighted Score = Score * Loading Factor
+        2. Sub-dim Score = Sum(Weighted) / Sum(Loadings)
+        3. Percentage = ((Sub-dim Score - 1) / 4) * 100
+        """
+        structure = {}
+        for r in responses:
+            dim = r['dimension']
+            sub = r.get('sub_dimension', 'General')
+            if dim not in structure: structure[dim] = {}
+            if sub not in structure[dim]: structure[dim][sub] = []
+            structure[dim][sub].append(r)
+
+        dim_final_scores = {}
+        for dim, subs in structure.items():
+            sub_percentages = []
+            for sub_name, items in subs.items():
+                # --- FIXED CALCULATION LINE ---
+                sum_weighted_scores = sum(item['score'] * item['loading_factor'] for item in items)
+                sum_loadings = sum(item['loading_factor'] for item in items)
+                
+                if sum_loadings > 0:
+                    sub_dim_score = sum_weighted_scores / sum_loadings
+                    sub_pct = ((sub_dim_score - 1) / 4) * 100
+                    sub_percentages.append(sub_pct)
+            
+            if sub_percentages:
+                dim_final_scores[dim] = round(sum(sub_percentages) / len(sub_percentages), 2)
+            else:
+                dim_final_scores[dim] = 0.0
+
+        overall = round(sum(dim_final_scores.values()) / 5, 2)
+        return overall, dim_final_scores
+
+    def generate_report(self, name, test_type, overall, metrics):
         prompt = f"""
-        Generate a professional Synqsol personality report for {name}.
-        Overall Score: {overall_pct}%
+        Generate a professional Synqsol {test_type} Personality Report for {name}.
+        Overall Score: {overall}%
         Dimension Scores: {metrics}
-
-        STRICT FORMATTING RULES:
-        - Do NOT use square brackets. Use '##' for headings.
-        - 'Detailed Dimension Analysis' must be a descriptive paragraph for each trait.
-        
-        REPORT STRUCTURE:
-        ## Executive Summary
-        (4-line overview)
-
-        ## Detailed Dimension Analysis
-        (A 2-3 sentence descriptive paragraph for each of the five traits)
-
-        ## Key Strengths
-        (3 detailed bullet points)
-
-        ## Development Opportunities
-        (2 actionable areas for improvement)
+        STRICT FORMATTING: No square brackets. Use '##' for headings.
         """
         try:
             response = client.models.generate_content(
@@ -70,128 +87,85 @@ class SynqsolAgent:
                 contents=prompt
             )
             return response.text
-        except Exception as e:
-            return "AI_BUSY_ERROR" if "429" in str(e) else f"Report Error: {e}"
+        except:
+            return "AI_BUSY_ERROR"
 
-# --- SECURE SESSION STATE INITIALIZATION ---
-def init_state(force_reset=False):
-    if force_reset:
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-    
-    defaults = {
-        'test_started': False,
-        'current_q': 0,
-        'responses': [],
-        'questions': [],
-        'final_report': None,
-        'name': "",
-        'overall_pct': 0,
-        'metrics': {}
-    }
-    for key, val in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = val
+# --- STREAMLIT UI LOGIC ---
+def reset_state():
+    for key in list(st.session_state.keys()): del st.session_state[key]
+    st.session_state.test_started = False
+    st.session_state.current_q = 0
+    st.session_state.responses = []
+    st.session_state.final_report = None
+    st.session_state.name = ""
 
-init_state()
+if 'test_started' not in st.session_state: reset_state()
 agent = SynqsolAgent()
 
-# --- STAGE 1: WELCOME ---
+# STAGE 1: SELECTION
 if not st.session_state.test_started and st.session_state.final_report is None:
-    st.title("🧠 Synqsol Assessment")
-    st.write("Welcome to the Synqsol Basic Personality Test.")
+    st.title("🧠 Synqsol Assessment Portal")
+    name = st.text_input("Candidate Name", value=st.session_state.name)
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📊 Start Basic Test (20Q)"):
+            if name:
+                st.session_state.name, st.session_state.test_type = name, "Basic"
+                st.session_state.questions = agent.load_questions("Basic")
+                st.session_state.test_started = True
+                st.rerun()
+    with col2:
+        if st.button("🚀 Start Advanced Test (45Q)"):
+            if name:
+                st.session_state.name, st.session_state.test_type = name, "Advanced"
+                st.session_state.questions = agent.load_questions("Advanced")
+                st.session_state.test_started = True
+                st.rerun()
+
+# STAGE 2: TEST LOOP
+elif st.session_state.test_started:
+    idx = st.session_state.current_q
+    qs = st.session_state.questions
+    q = qs[idx]
+    st.progress((idx + 1) / len(qs))
+    st.subheader(f"{st.session_state.test_type}: Question {idx + 1} of {len(qs)}")
+    st.write(f"### {q['text']}")
+    opts = ["Strongly Disagree", "Disagree", "Neutral", "Agree", "Strongly Agree"]
+    ans = st.radio("Response:", opts, index=2, key=f"q_{idx}")
     
-    input_name = st.text_input("Candidate Name", value=st.session_state.name)
-    
-    if st.button("🚀 Start Test"):
-        if input_name:
-            st.session_state.name = input_name
-            st.session_state.questions = agent.load_questions()
-            st.session_state.current_q = 0  # Reset counter
-            st.session_state.responses = [] # Clear old answers
-            st.session_state.test_started = True
+    if st.button("Next ➡️" if idx < len(qs)-1 else "Finish ✅"):
+        score = opts.index(ans) + 1
+        if str(q.get('level')).upper() == "R": score = 6 - score
+        st.session_state.responses.append({
+            "dimension": q['dimension'],
+            "sub_dimension": q.get('sub_dimension', 'General'),
+            "score": score,
+            "loading_factor": q.get('loading_factor', 1.0)
+        })
+        if idx < len(qs)-1:
+            st.session_state.current_q += 1
             st.rerun()
         else:
-            st.warning("Please enter a name to begin.")
-
-# --- STAGE 2: TEST LOOP ---
-elif st.session_state.test_started:
-    q_idx = st.session_state.current_q
-    total_q = len(st.session_state.questions)
-    
-    if q_idx < total_q:
-        q = st.session_state.questions[q_idx]
-        st.progress((q_idx + 1) / total_q)
-        st.subheader(f"Question {q_idx + 1} of {total_q}")
-        st.write(f"### {q['text']}")
-
-        options = ["Strongly Disagree", "Disagree", "Neutral", "Agree", "Strongly Agree"]
-        # Default index 2 is 'Neutral'
-        choice = st.radio("Select your response:", options, index=2, key=f"q_radio_{q_idx}")
-
-        if st.button("Next ➡️" if q_idx < (total_q - 1) else "Finish ✅"):
-            score = options.index(choice) + 1
-            if str(q.get('level')).upper() == "R":
-                score = 6 - score
-            
-            # Save response
-            st.session_state.responses.append({"dimension": q['dimension'], "score": score})
-            
-            if q_idx < (total_q - 1):
-                st.session_state.current_q += 1
+            with st.spinner("Calculating..."):
+                if st.session_state.test_type == "Basic":
+                    o, m = agent.calculate_basic(st.session_state.responses)
+                else:
+                    o, m = agent.calculate_advanced(st.session_state.responses)
+                st.session_state.overall_pct, st.session_state.metrics = o, m
+                st.session_state.final_report = agent.generate_report(st.session_state.name, st.session_state.test_type, o, m)
+                st.session_state.test_started = False
                 st.rerun()
-            else:
-                # FINAL STEP: CALCULATE AND GENERATE
-                with st.spinner("Analyzing your profile..."):
-                    o_pct, m = agent.calculate_results(st.session_state.responses)
-                    st.session_state.overall_pct = o_pct
-                    st.session_state.metrics = m
-                    st.session_state.final_report = agent.generate_report(st.session_state.name, o_pct, m)
-                    st.session_state.test_started = False
-                    st.rerun()
-    else:
-        st.error("Error: Question index out of range. Restarting...")
-        if st.button("Back to Start"):
-            init_state(force_reset=True)
-            st.rerun()
 
-# --- STAGE 3: STRUCTURED REPORT ---
+# STAGE 3: REPORT
 elif st.session_state.final_report:
-    st.title("Synqsol Personality Report")
-    
-    # 1. Header Information
+    st.title(f"Synqsol {st.session_state.test_type} Report")
     c1, c2, c3 = st.columns(3)
-    with c1: 
-        st.write(f"**Name:** {st.session_state.name}")
-        st.write(f"**Date:** 26/03/26")
-    with c2: 
-        st.write("**Test:** Basic Personality (20Q)")
-    with c3: 
-        st.metric("Overall Score", f"{st.session_state.overall_pct}%")
-
-    # 1a. Bar Chart Dropdown
-    with st.expander("📊 View Score Visualization (Bar Chart)"):
+    with c1: st.write(f"**Name:** {st.session_state.name}\n**Date:** 26/03/26")
+    with c3: st.metric("Overall Score", f"{st.session_state.overall_pct}%")
+    with st.expander("📊 View Visualization"):
         st.bar_chart(st.session_state.metrics)
-
-    # 2. Review Tab
     st.write("---")
-    st.subheader("📑 Dimension Review")
-    defs = {
-        "Openness": "Describes a person's tendency to be intellectually curious, creative, and willing to try new experiences.",
-        "Conscientiousness": "Measures how organized, dependable, and disciplined a person is in managing tasks.",
-        "Extraversion": "Indicates social energy, assertiveness, and sociability.",
-        "Agreeableness": "Assesses the tendency to be compassionate, cooperative, and helpful.",
-        "Neuroticism": "Reflects emotional stability and the likelihood of experiencing fluctuations under stress."
-    }
-    for d, df in defs.items():
-        with st.expander(f"Definition: {d}"):
-            st.write(df)
-
-    # 3, 4, 5. AI Content
-    st.write("---")
-    clean_report = st.session_state.final_report.replace("[", "").replace("]", "")
-    st.markdown(clean_report)
-
-    if st.button("🔄 Start a New Assessment"):
-        init_state(force_reset=True)
+    st.markdown(st.session_state.final_report.replace("[", "").replace("]", ""))
+    if st.button("🔄 Start New Assessment"):
+        reset_state()
         st.rerun()
